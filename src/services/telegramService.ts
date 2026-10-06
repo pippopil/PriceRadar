@@ -1,5 +1,7 @@
 import { TelegramConfig } from '../types';
 
+export type { TelegramConfig };
+
 const STORAGE_KEY = 'priceradar_telegram_config';
 
 export const DEFAULT_TELEGRAM_CONFIG: TelegramConfig = {

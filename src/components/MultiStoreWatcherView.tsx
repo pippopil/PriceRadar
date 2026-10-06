@@ -24,7 +24,7 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
-import { CustomProductWatch, StoreLink, MarketplaceId } from '../types';
+import { CustomProductWatch, StoreLink, MarketplaceId, TelegramConfig } from '../types';
 import { 
   getCustomWatches, 
   saveCustomWatches, 
@@ -34,7 +34,7 @@ import {
   updateStorePriceAndCheckAlert, 
   simulatePriceDropInStore 
 } from '../services/multiStoreWatcher';
-import { getTelegramConfig, TelegramConfig } from '../services/telegramService';
+import { getTelegramConfig } from '../services/telegramService';
 import { TelegramSettingsModal } from './TelegramSettingsModal';
 import { PWAInstallButton } from './PWAInstallButton';
 import { MARKETPLACE_CONFIGS } from '../data/mockCatalog';
