@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { fetchWbCardData, extractWbSku } from './src/services/wbParser';
+import { generateProductFromUrl, detectMarketplaceFromUrl } from './src/services/parserEngine';
 
 dotenv.config();
 
@@ -52,14 +53,53 @@ async function startServer() {
       if (!url) {
         return res.status(400).json({ success: false, error: 'Missing url parameter' });
       }
-      const sku = extractWbSku(url);
+
+      const cleanUrl = String(url).trim();
+      const sku = extractWbSku(cleanUrl);
       if (sku) {
         const card = await fetchWbCardData(sku);
         if (card) {
-          return res.json({ success: true, card });
+          return res.json({
+            success: true,
+            marketplace: 'wildberries',
+            storeName: 'Wildberries',
+            price: card.estimatedPrice || 1990,
+            oldPrice: card.estimatedOldPrice || undefined,
+            title: card.title,
+            imageUrl: card.imageUrl,
+            category: card.category,
+            sku: String(card.nmId),
+            card
+          });
         }
       }
-      return res.json({ success: false, message: 'Not a WB SKU or card not found' });
+
+      // Universal product and store detection for Ozon, Yandex, Ali, etc.
+      const mkt = detectMarketplaceFromUrl(cleanUrl);
+      const product = generateProductFromUrl(cleanUrl);
+      const offer = product.offers.find(o => o.marketplace === mkt);
+      const price = offer ? offer.price : product.lowestPrice;
+      const oldPrice = offer?.oldPrice || Math.round(price * 1.3);
+
+      const storeNames: Record<string, string> = {
+        wildberries: 'Wildberries',
+        ozon: 'Ozon',
+        yandex: 'Яндекс Маркет',
+        aliexpress: 'AliExpress',
+        megamarket: 'Мегамаркет'
+      };
+
+      return res.json({
+        success: true,
+        marketplace: mkt,
+        storeName: storeNames[mkt] || 'Интернет-магазин',
+        price,
+        oldPrice,
+        title: product.title,
+        imageUrl: product.imageUrl,
+        category: product.category,
+        sku: product.sku
+      });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message });
     }
