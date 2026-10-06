@@ -1,0 +1,6 @@
+{
+  "name": "PriceRadar РФ — Мониторинг цен маркетплейсов",
+  "description": "Сервис кросс-поиска и парсинга цен на Ozon, Wildberries, Яндекс Маркет, AliExpress с персональными скидками и сигналами в Telegram.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
