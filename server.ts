@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -12,6 +13,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
+  const server = http.createServer(app);
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
@@ -96,8 +98,12 @@ async function startServer() {
 
   // Vite middleware in dev or static files in production
   if (process.env.NODE_ENV !== 'production') {
+    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: isHmrDisabled ? false : { server },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -108,7 +114,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`[PriceRadar RF] Server running on http://0.0.0.0:${PORT}`);
   });
 }
