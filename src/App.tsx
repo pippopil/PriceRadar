@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import { Navbar, ActiveTab } from './components/Navbar';
 import { ProductSearchHero } from './components/ProductSearchHero';
 import { PriceComparisonView } from './components/PriceComparisonView';
 import { TrackingDashboard } from './components/TrackingDashboard';
@@ -8,6 +8,8 @@ import { AccountsVaultPanel } from './components/AccountsVaultPanel';
 import { PricingPlansModal } from './components/PricingPlansModal';
 import { ArchitectureSecurityView } from './components/ArchitectureSecurityView';
 import { MultiStoreWatcherView } from './components/MultiStoreWatcherView';
+import { RealTimeRadarView } from './components/RealTimeRadarView';
+import { LiveDropAlertBanner } from './components/LiveDropAlertBanner';
 import { 
   ParsedProduct, 
   TrackedItem, 
@@ -15,16 +17,19 @@ import {
   MarketplaceAccount, 
   TelegramConfig, 
   NotificationLog,
-  MarketplaceId
+  MarketplaceId,
+  RealtimeAlertEvent
 } from './types';
 import { INITIAL_PRODUCTS, INITIAL_TRACKS } from './data/mockCatalog';
 import { DEFAULT_ACCOUNTS } from './services/vaultService';
 import { SUBSCRIPTION_PLANS } from './data/planConfigs';
 import { formatTelegramMarkdown, sendTelegramMessage } from './services/parserEngine';
-import { AlertCircle, CheckCircle2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { realtimeMonitor } from './services/realtimeMonitorService';
+import { AlertCircle, CheckCircle2, ShieldCheck, Sparkles, X, Zap } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'search' | 'multi-watch' | 'tracking' | 'vault' | 'telegram' | 'plans' | 'architecture'>('search');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('radar');
+  const [liveAlert, setLiveAlert] = useState<RealtimeAlertEvent | null>(null);
   
   // Current active parsed product (defaults to iPhone 16 benchmark)
   const [currentProduct, setCurrentProduct] = useState<ParsedProduct | null>(INITIAL_PRODUCTS[0]);
@@ -111,9 +116,21 @@ export default function App() {
     localStorage.setItem('priceradar_telegram', JSON.stringify(telegramConfig));
   }, [telegramConfig]);
 
+  // Start Realtime Background Scanner and subscribe to incoming drops
   useEffect(() => {
-    localStorage.setItem('priceradar_logs', JSON.stringify(notificationLogs));
-  }, [notificationLogs]);
+    realtimeMonitor.start();
+    const unsubAlert = realtimeMonitor.onAlert((alert) => {
+      setLiveAlert(alert);
+      // Auto-hide alert banner after 9 seconds
+      setTimeout(() => {
+        setLiveAlert((curr) => (curr?.id === alert.id ? null : curr));
+      }, 9000);
+    });
+
+    return () => {
+      unsubAlert();
+    };
+  }, []);
 
   const showToast = (text: string, type: 'success' | 'alert' = 'success') => {
     setToastMessage({ text, type });
@@ -407,6 +424,13 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'radar' && (
+          <RealTimeRadarView
+            onOpenTelegramSettings={() => setActiveTab('telegram')}
+            onNavigateToWatches={() => setActiveTab('multi-watch')}
+          />
+        )}
+
         {activeTab === 'plans' && (
           <PricingPlansModal
             currentPlan={currentPlan}
@@ -419,6 +443,12 @@ export default function App() {
           <ArchitectureSecurityView />
         )}
       </main>
+
+      {/* Floating Real-time Discount Alert Banner */}
+      <LiveDropAlertBanner
+        alert={liveAlert}
+        onDismiss={() => setLiveAlert(null)}
+      />
 
       {/* Plan Upgrade Modal */}
       {isUpgradeModalOpen && (

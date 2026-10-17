@@ -9,6 +9,82 @@ const STORAGE_KEY = 'priceradar_custom_watches';
 
 const INITIAL_WATCHES: CustomProductWatch[] = [
   {
+    id: 'watch-samsung-z-fold',
+    title: 'Смартфон Samsung Galaxy Z Fold 8 12/256GB Global (Nano-SIM + eSIM)',
+    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
+    category: 'Электроника / Смартфоны / Складные смартфоны',
+    targetPrice: 140000,
+    lowestPrice: 138500,
+    lowestStore: 'Яндекс Маркет',
+    createdAt: '2026-10-17T10:00:00Z',
+    lastCheckedAt: 'Сегодня, 13:40',
+    status: 'active',
+    links: [
+      {
+        id: 'link-fold-yandex',
+        marketplace: 'yandex',
+        storeName: 'Яндекс Маркет (Флагманы)',
+        url: 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&how=aprice',
+        currentPrice: 138500,
+        oldPrice: 189990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: true
+      },
+      {
+        id: 'link-fold-megamarket',
+        marketplace: 'megamarket',
+        storeName: 'Мегамаркет (СберСмарт)',
+        url: 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Z%20Fold%20256GB&sort=1',
+        currentPrice: 140130,
+        oldPrice: 194990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-wb',
+        marketplace: 'wildberries',
+        storeName: 'Wildberries (Электроника РФ)',
+        url: 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Z%20Fold%20256GB',
+        currentPrice: 141980,
+        oldPrice: 199990,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-ozon',
+        marketplace: 'ozon',
+        storeName: 'Ozon (Официальный продавец)',
+        url: 'https://www.ozon.ru/product/samsung-smartfon-galaxy-z-fold-8-global-12-256-gb-nano-sim-esim-cherno-seryy-5013198449/?at=1rmo1U1dnGJhbmndJiotDsDwAfjsx9CI&sh=mSxjM15olw',
+        directSku: '5013198449',
+        currentPrice: 144990,
+        oldPrice: 195740,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      },
+      {
+        id: 'link-fold-ali',
+        marketplace: 'aliexpress',
+        storeName: 'AliExpress (Global Phone Store)',
+        url: 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&sortType=price_asc',
+        currentPrice: 142900,
+        oldPrice: 189000,
+        inStock: true,
+        lastCheckedAt: 'Сегодня, 13:40',
+        isLowest: false
+      }
+    ],
+    priceHistory: [
+      { timestamp: '15 окт', storeName: 'Ozon', price: 149990, isLowestAcrossAll: false },
+      { timestamp: '16 окт', storeName: 'Wildberries', price: 142260, isLowestAcrossAll: false },
+      { timestamp: 'Сегодня', storeName: 'Яндекс Маркет', price: 138500, isLowestAcrossAll: true }
+    ],
+    alertHistory: []
+  },
+  {
     id: 'watch-deerma-filter',
     title: 'Сменный HEPA фильтр для пылесоса Xiaomi Deerma DX700 / DX700S',
     imageUrl: 'https://basket-02.wbbasket.ru/vol198/part19885/19885235/images/big/1.webp',
@@ -155,7 +231,34 @@ export function getCustomWatches(): CustomProductWatch[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: CustomProductWatch[] = JSON.parse(raw);
+      let modified = false;
+
+      // Авто-миграция старых ссылок с "Fold 8" или деградировавших в "Galaxy 256"
+      parsed.forEach(w => {
+        w.links?.forEach(l => {
+          if (l.url && (l.url.includes('Fold%208') || l.url.includes('Fold+8') || l.url.includes('Fold 8') || l.url.includes('Galaxy%20256'))) {
+            if (l.marketplace === 'yandex') {
+              l.url = 'https://market.yandex.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&how=aprice';
+              modified = true;
+            } else if (l.marketplace === 'wildberries') {
+              l.url = 'https://www.wildberries.ru/catalog/0/search.aspx?search=Samsung%20Galaxy%20Z%20Fold%20256GB';
+              modified = true;
+            } else if (l.marketplace === 'megamarket') {
+              l.url = 'https://megamarket.ru/catalog/?q=Samsung%20Galaxy%20Z%20Fold%20256GB&sort=1';
+              modified = true;
+            } else if (l.marketplace === 'aliexpress') {
+              l.url = 'https://aliexpress.ru/search?text=Samsung%20Galaxy%20Z%20Fold%20256GB&sortType=price_asc';
+              modified = true;
+            }
+          }
+        });
+      });
+
+      if (modified) {
+        saveCustomWatches(parsed);
+      }
+      return parsed;
     }
   } catch (e) {
     console.warn('Failed to load custom watches from localStorage', e);
@@ -333,7 +436,8 @@ export function removeStoreLinkFromWatch(watchId: string, linkId: string): Custo
 export async function updateStorePriceAndCheckAlert(
   watchId: string,
   linkId: string,
-  newPrice: number
+  newPrice: number,
+  isSimulation = false
 ): Promise<{ watch: CustomProductWatch; alertSent: boolean; message?: string }> {
   const watches = getCustomWatches();
   const watch = watches.find(w => w.id === watchId);
@@ -402,7 +506,8 @@ export async function updateStorePriceAndCheckAlert(
         price: l.currentPrice,
         isWinner: l.id === link.id
       })),
-      productUrl: link.url
+      productUrl: link.url,
+      isSimulation
     });
 
     const sendRes = await sendTelegramNotification(formattedAlert);
@@ -417,7 +522,7 @@ export async function updateStorePriceAndCheckAlert(
       newPrice,
       oldPrice,
       savingsVsCompetitor: savings,
-      message: `Цена в ${link.storeName} (${newPrice} ₽) стала самой низкой среди всех ваших магазинов! Экономия ${savings} ₽!`,
+      message: `${isSimulation ? '[ТЕСТ] ' : ''}Цена в ${link.storeName} (${newPrice.toLocaleString('ru-RU')} ₽) стала самой низкой среди всех ваших магазинов! Экономия ${savings.toLocaleString('ru-RU')} ₽!`,
       telegramSent: alertSent
     });
 
@@ -425,7 +530,7 @@ export async function updateStorePriceAndCheckAlert(
       ? `Сигнал успешно отправлен в Telegram бот!` 
       : `Цена ниже всех, но ошибка Telegram: ${sendRes.error}`;
   } else if (hasPriceDropped && !isLowerThanAllOthers) {
-    alertMessage = `Цена в ${link.storeName} снизилась до ${newPrice} ₽, но в ${bestCompetitor?.storeName} всё еще дешевле (${bestCompetitor?.currentPrice} ₽). Сигнал не отправлен, так как цена не является абсолютным минимумом среди всех магазинов.`;
+    alertMessage = `Цена в ${link.storeName} снизилась до ${newPrice.toLocaleString('ru-RU')} ₽, но в ${bestCompetitor?.storeName} всё еще дешевле (${bestCompetitor?.currentPrice.toLocaleString('ru-RU')} ₽). Сигнал не отправлен, так как цена не является абсолютным минимумом среди всех магазинов.`;
   }
 
   watch.lastCheckedAt = 'Только что';
@@ -456,5 +561,5 @@ export async function simulatePriceDropInStore(
   // Делаем цену на dropPercent ниже самого дешевого конкурента
   const targetDroppedPrice = Math.max(100, Math.round((minCompetitor * (1 - dropPercent / 100)) / 10) * 10);
 
-  return updateStorePriceAndCheckAlert(watchId, linkId, targetDroppedPrice);
+  return updateStorePriceAndCheckAlert(watchId, linkId, targetDroppedPrice, true);
 }

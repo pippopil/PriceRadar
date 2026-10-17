@@ -99,7 +99,157 @@ export function extractControlPhrases(
     };
   }
 
-  // 3. Стандартный поиск точного модельного индекса (буквенно-цифровые коды)
+  // 5. Смартфоны Samsung Galaxy (Z Fold, Z Flip, S-серия, A-серия)
+  if (lowTitle.includes('samsung') || lowTitle.includes('galaxy') || lowTitle.includes('fold') || lowTitle.includes('flip')) {
+    // Samsung Galaxy Z Fold (флагманы со складным экраном)
+    if (lowTitle.includes('fold')) {
+      const genMatch = cleanTitle.match(/fold[-_\s]*(\d+)/i) || lowTitle.match(/fold\s*(\d+)/i);
+      const rawGen = genMatch ? parseInt(genMatch[1], 10) : 6;
+      const memMatch = cleanTitle.match(/(256|512|1024|1tb|128)/i);
+      const memStr = memMatch ? (memMatch[1].toLowerCase() === '1tb' || memMatch[1] === '1024' ? ' 1TB' : ` ${memMatch[1]}GB`) : ' 256GB';
+
+      // ВАЖНО: В карточках продавцов на Ozon часто пишут неофициальные названия "Fold 8" или "Fold 7".
+      // Если передать "Fold 8" в Wildberries или Яндекс Маркет, их поисковый робот сбрасывает запрос в "Galaxy 256",
+      // выдавая дешевые телефоны Galaxy A-серии за 20 000 руб вместо складного смартфона за 140 000 руб!
+      // Поэтому основной контрольной фразой формируем «Samsung Galaxy Z Fold 256GB» (гарантированное нахождение всех Fold).
+      const isUnreleasedGen = rawGen > 6;
+      const primary = isUnreleasedGen
+        ? `Samsung Galaxy Z Fold${memStr}`.trim()
+        : `Samsung Galaxy Z Fold ${rawGen}${memStr}`.trim();
+      
+      const modelOnly = isUnreleasedGen ? 'Galaxy Z Fold' : `Galaxy Z Fold ${rawGen}`;
+      const brandModelClean = isUnreleasedGen ? `Samsung Galaxy Z Fold 6${memStr}` : `Samsung Galaxy Z Fold ${rawGen}`;
+      const cleanSku = sku && /^\d{6,12}$/.test(sku) ? sku : undefined;
+
+      const opts = new Set<string>();
+      opts.add(`Samsung Galaxy Z Fold${memStr}`.trim());
+      opts.add(`Samsung Galaxy Z Fold 6${memStr}`.trim());
+      if (isUnreleasedGen) {
+        opts.add(`Samsung Galaxy Z Fold ${rawGen}${memStr}`.trim());
+      }
+      opts.add('Samsung Galaxy Z Fold');
+      if (cleanSku) opts.add(`Артикул: ${cleanSku}`);
+
+      return {
+        primary,
+        modelOnly,
+        brandModelClean,
+        skuOnly: cleanSku,
+        allOptions: Array.from(opts).slice(0, 4)
+      };
+    }
+
+    // Samsung Galaxy Z Flip
+    if (lowTitle.includes('flip')) {
+      const genMatch = cleanTitle.match(/flip[-_\s]*(\d+)/i) || lowTitle.match(/flip\s*(\d+)/i);
+      const rawGen = genMatch ? parseInt(genMatch[1], 10) : 6;
+      const genStr = rawGen > 6 ? '' : ` ${rawGen}`;
+      const memMatch = cleanTitle.match(/(256|512|128)/i);
+      const memStr = memMatch ? ` ${memMatch[1]}GB` : ' 256GB';
+
+      const primary = `Samsung Galaxy Z Flip${genStr}${memStr}`.trim();
+      const modelOnly = `Galaxy Z Flip${genStr}`.trim();
+      const brandModelClean = `Samsung Galaxy Z Flip 6${memStr}`.trim();
+      const cleanSku = sku && /^\d{6,12}$/.test(sku) ? sku : undefined;
+
+      const opts = new Set<string>();
+      opts.add(primary);
+      opts.add(`Samsung Galaxy Z Flip${memStr}`.trim());
+      opts.add(`Samsung Galaxy Z Flip 6${memStr}`.trim());
+      if (cleanSku) opts.add(`Артикул: ${cleanSku}`);
+
+      return {
+        primary,
+        modelOnly,
+        brandModelClean,
+        skuOnly: cleanSku,
+        allOptions: Array.from(opts).slice(0, 4)
+      };
+    }
+
+    // Samsung Galaxy S-серия (S25 Ultra, S24 Ultra, S24+, S24, S23, FE)
+    const sMatch = cleanTitle.match(/s(21|22|23|24|25)\s*(ultra|plus|\+|fe)?/i);
+    if (sMatch) {
+      const sModel = sMatch[0].toUpperCase();
+      const memMatch = cleanTitle.match(/(256|512|1tb|128)/i);
+      const memStr = memMatch ? (memMatch[1].toLowerCase() === '1tb' ? ' 1TB' : ` ${memMatch[1]}GB`) : '';
+
+      const primary = `Samsung Galaxy ${sModel}${memStr}`.trim();
+      const modelOnly = `Galaxy ${sModel}`.trim();
+      const brandModelClean = `Samsung ${sModel}`.trim();
+      const cleanSku = sku && /^\d{6,12}$/.test(sku) ? sku : undefined;
+
+      const opts = new Set<string>();
+      opts.add(primary);
+      opts.add(`Samsung Galaxy ${sModel}`);
+      opts.add(`Galaxy ${sModel}${memStr}`);
+      if (cleanSku) opts.add(`Артикул: ${cleanSku}`);
+
+      return {
+        primary,
+        modelOnly,
+        brandModelClean,
+        skuOnly: cleanSku,
+        allOptions: Array.from(opts).slice(0, 4)
+      };
+    }
+
+    // Samsung Galaxy A-серия (A55, A54, A35, A34, A25, A15, A05)
+    const aMatch = cleanTitle.match(/a(05|14|15|16|24|25|34|35|54|55|56)\b/i);
+    if (aMatch) {
+      const aModel = aMatch[0].toUpperCase();
+      const memMatch = cleanTitle.match(/(128|256|64)/i);
+      const memStr = memMatch ? ` ${memMatch[1]}GB` : '';
+
+      const primary = `Samsung Galaxy ${aModel}${memStr}`.trim();
+      const modelOnly = `Galaxy ${aModel}`.trim();
+      const brandModelClean = `Samsung ${aModel}`.trim();
+      const cleanSku = sku && /^\d{6,12}$/.test(sku) ? sku : undefined;
+
+      const opts = new Set<string>();
+      opts.add(primary);
+      opts.add(`Samsung Galaxy ${aModel}`);
+      opts.add(`Galaxy ${aModel}${memStr}`);
+      if (cleanSku) opts.add(`Артикул: ${cleanSku}`);
+
+      return {
+        primary,
+        modelOnly,
+        brandModelClean,
+        skuOnly: cleanSku,
+        allOptions: Array.from(opts).slice(0, 4)
+      };
+    }
+  }
+
+  // 6. Смартфоны Apple iPhone
+  if (lowTitle.includes('iphone') || (lowTitle.includes('apple') && lowTitle.includes('айфон'))) {
+    const ipMatch = cleanTitle.match(/iphone\s*(\d{1,2}(?:\s*(?:pro\s*max|pro|plus|mini))?)/i);
+    const ipModel = ipMatch ? ipMatch[0] : 'iPhone 16';
+    const memMatch = cleanTitle.match(/(128|256|512|1tb)/i);
+    const memStr = memMatch ? (memMatch[1].toLowerCase() === '1tb' ? ' 1TB' : ` ${memMatch[1]}GB`) : ' 128GB';
+
+    const primary = `Apple ${ipModel}${memStr}`.trim();
+    const modelOnly = ipModel.trim();
+    const brandModelClean = `Apple ${ipModel}`.trim();
+    const cleanSku = sku && /^\d{6,12}$/.test(sku) ? sku : undefined;
+
+    const opts = new Set<string>();
+    opts.add(primary);
+    opts.add(`Apple ${ipModel}`);
+    opts.add(`${ipModel}${memStr}`);
+    if (cleanSku) opts.add(`Артикул: ${cleanSku}`);
+
+    return {
+      primary,
+      modelOnly,
+      brandModelClean,
+      skuOnly: cleanSku,
+      allOptions: Array.from(opts).slice(0, 4)
+    };
+  }
+
+  // 7. Стандартный поиск точного модельного индекса (буквенно-цифровые коды)
   // Примеры: GFH/CW-7420W, CW-7420W, WH-1000XM5, HS05, ECAM 22.110.B, 16 128GB, L10s Ultra
   const modelRegex = /([a-z0-9]{2,8}[-\/][a-z0-9]{2,8}(?:[-\/][a-z0-9]+)?|[a-z]{1,4}\d{2,6}[a-z]?|\b\d{2,5}[a-z]{1,4}\b)/i;
   const match = cleanTitle.match(modelRegex);
@@ -129,7 +279,21 @@ export function extractControlPhrases(
   // Очистка слэшей (например GFH/CW-7420W -> CW-7420W или GFH CW-7420W)
   // На Wildberries слэши ломают точный поиск
   const modelCleanWb = rawModel.replace(/[\/]/g, ' ').replace(/\s+/g, ' ').trim();
-  const modelHyphenOnly = rawModel.includes('/') ? rawModel.split('/')[1] || rawModel : rawModel;
+  let modelHyphenOnly = rawModel;
+  if (rawModel.includes('/')) {
+    const parts = rawModel.split('/');
+    if (/^\d+$/.test(parts[1])) {
+      // Если вторая часть - чисто число (например 256 или 512), не выбрасываем первую часть
+      modelHyphenOnly = `${parts[0]} ${parts[1]}`.trim();
+    } else {
+      modelHyphenOnly = parts[1] || rawModel;
+    }
+  }
+
+  // Если модель состоит только из цифр памяти (128, 256, 512), не оставляем ее голой
+  if (/^(64|128|256|512|1024)$/.test(modelHyphenOnly)) {
+    modelHyphenOnly = rawModel.replace(/[\/]/g, ' ').trim();
+  }
 
   // Формирование основной контрольной фразы
   let primary = '';
@@ -214,30 +378,46 @@ export function buildTargetedMarketplaceUrl(
   }
 
   // Очищаем фразу от префикса «Артикул: »
-  const cleanQuery = controlPhrase.replace(/^Артикул:\s*/i, '').trim();
+  let cleanQuery = controlPhrase.replace(/^Артикул:\s*/i, '').trim();
+
+  // Защита от сброса поиска в дешевые Galaxy A-серии на Wildberries и Я.Маркете:
+  // Если в запросе указана несуществующая в каталогах модель (например "Fold 8"),
+  // робот Wildberries вырезает неизвестное слово и ищет "Galaxy 256"!
+  // Заменяем на гарантированно индексируемую модель «Samsung Galaxy Z Fold 256GB».
+  if (/fold\s*[789]\b/i.test(cleanQuery)) {
+    cleanQuery = cleanQuery.replace(/fold\s*[789]\b/i, 'Fold').replace(/\s+/g, ' ');
+    if (!cleanQuery.includes('256') && !cleanQuery.includes('512') && !cleanQuery.includes('1TB')) {
+      cleanQuery = `${cleanQuery} 256GB`;
+    }
+  }
+
+  // Если запрос деградировал до «Galaxy 256» или «Galaxy 12», восстанавливаем полный бренд и контекст
+  if (/^galaxy\s*\d{2,4}$/i.test(cleanQuery)) {
+    cleanQuery = `Samsung ${cleanQuery}`;
+  }
+
   const encoded = encodeURIComponent(cleanQuery);
 
   switch (marketplace) {
     case 'wildberries':
-      // На WB стандартный поиск по запросу без принудительной сортировки
-      // (при сортировке priceup WB выдает тряпки и заглушки за 50 руб вместо швабры)
+      // На WB стандартный поиск по запросу (без priceup, чтобы не выдавать чехлы и заглушки за 50 руб)
       return `https://www.wildberries.ru/catalog/0/search.aspx?search=${encoded}`;
 
     case 'ozon':
-      // На Ozon from_global=true открывает глобальный каталог товаров без ограничений
-      return `https://www.ozon.ru/search/?text=${encoded}&from_global=true`;
+      // На Ozon from_global=true открывает глобальный каталог товаров с сортировкой по возрастанию цены
+      return `https://www.ozon.ru/search/?text=${encoded}&from_global=true&sorting=price`;
 
     case 'yandex':
-      // На Яндекс.Маркете открываем каталог предложений по запросу
-      return `https://market.yandex.ru/search?text=${encoded}`;
+      // На Яндекс.Маркете открываем каталог с сортировкой по возрастанию цены (how=aprice)
+      return `https://market.yandex.ru/search?text=${encoded}&how=aprice`;
 
     case 'aliexpress':
-      // На AliExpress РФ актуальный формат поиска: /search?text=
-      return `https://aliexpress.ru/search?text=${encoded}`;
+      // На AliExpress РФ актуальный формат поиска с сортировкой по цене (sortType=price_asc)
+      return `https://aliexpress.ru/search?text=${encoded}&sortType=price_asc`;
 
     case 'megamarket':
-      // На Мегамаркете прямой поиск по каталогу
-      return `https://megamarket.ru/catalog/?q=${encoded}`;
+      // На Мегамаркете прямой поиск по каталогу с сортировкой по возрастанию цены (sort=1)
+      return `https://megamarket.ru/catalog/?q=${encoded}&sort=1`;
 
     default:
       return `https://yandex.ru/products/search?text=${encoded}`;

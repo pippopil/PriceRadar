@@ -239,11 +239,18 @@ export function generateProductFromUrl(url: string, wbCard?: WbCardResult | null
     const config = MARKETPLACE_CONFIGS[m];
     const isSource = m === marketplace;
     
-    // Дисперсия цен между магазинами: +/- 4% до 12%
+    // Стабильный рыночный расчет цен между маркетплейсами РФ вместо хаотичных случайных чисел
     let storePrice = basePrice;
     if (!isSource) {
-      const variance = Math.round((Math.random() * 0.16 - 0.06) * basePrice / 10) * 10;
-      storePrice = Math.max(500, basePrice + variance);
+      const marketplaceFactors: Record<MarketplaceId, number> = {
+        yandex: -0.035,       // На Я.Маркете часто минимальные цены от дистрибьюторов электроники
+        wildberries: -0.02,   // Wildberries с учетом СПП
+        aliexpress: -0.015,   // AliExpress РФ доставка из Москвы
+        ozon: 0.0,            // Ozon базовый уровень
+        megamarket: 0.012     // Мегамаркет с кешбэком
+      };
+      const factor = marketplaceFactors[m] ?? 0;
+      storePrice = Math.max(250, Math.round((basePrice * (1 + factor)) / 10) * 10);
     }
 
     const personalDiscount = config.typicalDiscount;

@@ -1,5 +1,5 @@
 import http from 'http';
-import express from 'express';
+import express, { Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,6 +12,11 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// SSE clients pool for real-time broadcasts
+const sseClients = new Set<Response>();
+let totalDispatchedAlerts = 0;
+const serverStartTime = Date.now();
+
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
@@ -23,9 +28,77 @@ async function startServer() {
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
-      service: 'PriceRadar RF Backend',
-      version: '1.0.0',
-      timestamp: new Date().toISOString()
+      service: 'PriceRadar RF Real-Time Backend',
+      version: '1.2.0',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000),
+      activeSSEClients: sseClients.size,
+      totalDispatchedAlerts
+    });
+  });
+
+  // Real-Time Server-Sent Events (SSE) Stream
+  app.get('/api/stream/price-alerts', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable proxy buffering for nginx / GCP Cloud Run
+    res.flushHeaders?.();
+
+    // Initial handshake
+    res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`);
+
+    sseClients.add(res);
+
+    // Heartbeat every 20 seconds to keep connection alive through cloud proxies
+    const heartbeatTimer = setInterval(() => {
+      try {
+        res.write(`: heartbeat ${Date.now()}\n\n`);
+      } catch (e) {
+        clearInterval(heartbeatTimer);
+        sseClients.delete(res);
+      }
+    }, 20000);
+
+    req.on('close', () => {
+      clearInterval(heartbeatTimer);
+      sseClients.delete(res);
+    });
+  });
+
+  // Broadcast alert endpoint (called internally or by monitor worker)
+  app.post('/api/monitor/broadcast-alert', (req, res) => {
+    try {
+      const { alert } = req.body;
+      if (!alert) {
+        return res.status(400).json({ success: false, error: 'Missing alert payload' });
+      }
+
+      totalDispatchedAlerts++;
+      const payload = JSON.stringify({ type: 'price_drop', alert, timestamp: new Date().toISOString() });
+      
+      sseClients.forEach((client) => {
+        try {
+          client.write(`data: ${payload}\n\n`);
+        } catch (e) {
+          sseClients.delete(client);
+        }
+      });
+
+      return res.json({ success: true, broadcastCount: sseClients.size });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Monitor status endpoint
+  app.get('/api/monitor/status', (_req, res) => {
+    res.json({
+      success: true,
+      status: 'active',
+      activeSubscribers: sseClients.size,
+      totalAlertsSent: totalDispatchedAlerts,
+      uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000)
     });
   });
 
@@ -120,7 +193,7 @@ async function startServer() {
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           disable_web_page_preview: false
         })
       });
@@ -155,7 +228,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[PriceRadar RF] Server running on http://0.0.0.0:${PORT}`);
+    console.log(`[PriceRadar RF] Server running with SSE & Realtime Engine on http://0.0.0.0:${PORT}`);
   });
 }
 

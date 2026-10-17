@@ -608,6 +608,16 @@ export const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
           </div>
         </div>
 
+        {/* Smart optimization alert for Samsung Galaxy Z Fold / unreleased seller slugs */}
+        {(product.title.toLowerCase().includes('fold 8') || product.title.toLowerCase().includes('galaxy z fold') || (product.sourceUrl && product.sourceUrl.toLowerCase().includes('fold-8'))) && (
+          <div className="mb-3.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-white">Умная защита поиска линейки Galaxy Z Fold:</span> В ссылке Ozon продавец указал обозначение "Fold 8". На Wildberries и Яндекс Маркете поиск автоматически оптимизирован по фразе <b>«Samsung Galaxy Z Fold 256GB»</b>, что исключает сброс поиска в дешевые телефоны Galaxy A-серии (A15/A25) и находит реальные складные смартфоны.
+            </div>
+          </div>
+        )}
+
         {/* Quick Click Chips */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-[11px] text-slate-400 font-medium">Рекомендуемые фразы:</span>
@@ -922,9 +932,9 @@ export const PriceComparisonView: React.FC<PriceComparisonViewProps> = ({
                   >
                     <span>
                       {offer.isDirectLink 
-                        ? `Купить за ${formatPrice(offer.personalPrice)} на ${config.name}` 
+                        ? `Купить за ${formatPrice(offer.personalPrice)} на ${config.name} (Товар)` 
                         : isAvailable 
-                        ? `Купить за ~${formatPrice(offer.personalPrice)} на ${config.name}` 
+                        ? `Открыть от ${formatPrice(offer.personalPrice)} на ${config.name} (Каталог)` 
                         : `Искать аналоги на ${config.name}`}
                     </span>
                     <ExternalLink className="w-3.5 h-3.5" />

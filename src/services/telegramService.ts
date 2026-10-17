@@ -127,28 +127,35 @@ export function formatMultiStorePriceDropAlert(params: {
   bestCompetitorPrice: number;
   allStorePrices: Array<{ store: string; price: number; isWinner: boolean }>;
   productUrl: string;
+  isSimulation?: boolean;
 }): string {
   const dropDiff = params.oldPrice - params.newPrice;
   const dropPercent = Math.round((dropDiff / params.oldPrice) * 100);
-  const savingsVsCompetitor = params.bestCompetitorPrice - params.newPrice;
+  const savingsVsCompetitor = Math.max(0, params.bestCompetitorPrice - params.newPrice);
 
   const storesList = params.allStorePrices
     .map(s => {
       if (s.isWinner) {
-        return `  🟢 <b>${s.store}:</b> <b>${s.price.toLocaleString('ru-RU')} ₽</b> 🏆 <i>(САМАЯ НИЗКАЯ!)</i>`;
+        return `  🟢 <b>${s.store}:</b> <b>${s.price.toLocaleString('ru-RU')} ₽</b> 🏆 <i>(ЛУЧШАЯ ЦЕНА!)</i>`;
       }
       const diff = s.price - params.newPrice;
       return `  ⚪️ ${s.store}: ${s.price.toLocaleString('ru-RU')} ₽ <i>(+${diff.toLocaleString('ru-RU')} ₽)</i>`;
     })
     .join('\n');
 
-  return `🔥 <b>СИГНАЛ PRICERADAR: ЦЕНА ПРОСЕЛА НИЖЕ ВСЕХ МАГАЗИНОВ!</b>\n\n` +
+  const testHeader = params.isSimulation 
+    ? `🧪 <b>ТЕСТОВЫЙ СИГНАЛ ПРОВЕРКИ КАНАЛОВ (СИМУЛЯЦИЯ)</b>\n<i>(Сформирован по кнопке проверки в интерфейсе. На реальном сайте цена может отличаться.)</i>\n\n`
+    : `🔥 <b>СИГНАЛ PRICERADAR: ЦЕНА ПРОСЕЛА НИЖЕ ВСЕХ МАГАЗИНОВ!</b>\n\n`;
+
+  return `${testHeader}` +
     `📦 <b>Товар:</b> ${params.productTitle}\n` +
     `🏪 <b>Магазин-лидер:</b> <b>${params.droppedStore}</b>\n` +
-    `📉 <b>Новая цена:</b> <b>${params.newPrice.toLocaleString('ru-RU')} ₽</b> ` +
+    `📉 <b>Цена со скидкой:</b> <b>${params.newPrice.toLocaleString('ru-RU')} ₽</b> ` +
     `<s>${params.oldPrice.toLocaleString('ru-RU')} ₽</s> (<b>-${dropPercent}%</b>, экономия ${dropDiff.toLocaleString('ru-RU')} ₽)\n\n` +
-    `📊 <b>Сравнение со всеми вашими ссылками:</b>\n` +
+    `💳 <i>Цена учитывает СПП Wildberries / Ozon Карту / бонусы маркетплейса при авторизации.</i>\n\n` +
+    `📊 <b>Сравнение цен между подключенными магазинами:</b>\n` +
     `${storesList}\n\n` +
-    `⚡️ <b>Выгода:</b> дешевле ближайшего магазина (${params.bestCompetitorStore}) на <b>${savingsVsCompetitor.toLocaleString('ru-RU')} ₽</b>!\n\n` +
-    `🛒 <a href="${params.productUrl}"><b>Купить прямо сейчас на ${params.droppedStore}</b></a>`;
+    `⚡️ <b>Чистая выгода:</b> дешевле ближайшего магазина (${params.bestCompetitorStore}) на <b>${savingsVsCompetitor.toLocaleString('ru-RU')} ₽</b>!\n\n` +
+    `🛒 <a href="${params.productUrl}"><b>Купить на ${params.droppedStore} (открыть с фильтром лучшей цены)</b></a>\n\n` +
+    `ℹ️ <i>Ссылка открывает выдачу с сортировкой от минимальной цены. Если цена отличается, авторизуйтесь в магазине для применения скидки лояльности.</i>`;
 }

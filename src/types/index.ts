@@ -171,3 +171,44 @@ export interface NotificationLog {
   url: string;
   status: 'sent' | 'simulated';
 }
+
+export interface RealtimeAlertEvent {
+  id: string;
+  timestamp: string;
+  productId: string;
+  productTitle: string;
+  imageUrl: string;
+  storeName: string;
+  marketplace: MarketplaceId | 'other';
+  oldPrice: number;
+  newPrice: number;
+  dropAmount: number;
+  dropPercent: number;
+  isLowestAcrossAll: boolean;
+  targetPriceReached: boolean;
+  targetPrice: number | null;
+  url: string;
+  notifiedChannels: {
+    telegram: boolean;
+    desktopPush: boolean;
+    audio: boolean;
+    inApp: boolean;
+  };
+  reason: 'target_reached' | 'lowest_store' | 'discount_drop' | 'flash_deal';
+  isSimulation?: boolean;
+  isDirectLink?: boolean;
+  verifiedAt?: string;
+  verifiedPrice?: number;
+}
+
+export interface RadarConfig {
+  isEnabled: boolean;
+  intervalSeconds: number;
+  minDropPercent: number;
+  alertOnTargetOnly: boolean;
+  alertOnlyIfLowestAcrossAll: boolean;
+  notifyTelegram: boolean;
+  notifyDesktopPush: boolean;
+  notifySound: boolean;
+  notifyInApp: boolean;
+}

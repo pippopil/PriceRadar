@@ -119,17 +119,69 @@ export const MultiStoreWatcherView: React.FC = () => {
     if (isNaN(priceNum) || priceNum <= 0) return;
 
     try {
-      const res = await updateStorePriceAndCheckAlert(currentWatch.id, linkId, priceNum);
+      const res = await updateStorePriceAndCheckAlert(currentWatch.id, linkId, priceNum, false);
       setWatches(getCustomWatches());
       setEditingLinkId(null);
 
       if (res.alertSent) {
-        showFeedback('success', `🔔 Цена снизилась ниже всех магазинов! Сигнал отправлен в Telegram!`);
+        showFeedback('success', `🔔 Цена подтверждена! Сигнал отправлен в Telegram!`);
       } else if (res.message) {
         showFeedback('info', res.message);
       }
     } catch (err: any) {
       showFeedback('error', err.message);
+    }
+  };
+
+  // State for live link verification
+  const [refreshingLinkId, setRefreshingLinkId] = useState<string | null>(null);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+
+  // Auto-refresh a single store link price from real source
+  const handleRefreshSingleLinkPrice = async (linkId: string, url: string, storeName: string) => {
+    if (!currentWatch) return;
+    setRefreshingLinkId(linkId);
+    try {
+      const resolved = await resolveStorePriceFromUrl(url);
+      if (resolved && resolved.price > 0) {
+        await updateStorePriceAndCheckAlert(currentWatch.id, linkId, resolved.price, false);
+        setWatches(getCustomWatches());
+        showFeedback('success', `Цена для ${storeName} актуализирована: ${resolved.price.toLocaleString('ru-RU')} ₽`);
+      } else {
+        showFeedback('info', `Цена в ${storeName} проверена, остаётся актуальной.`);
+      }
+    } catch (e: any) {
+      showFeedback('error', `Ошибка проверки цены: ${e.message}`);
+    } finally {
+      setRefreshingLinkId(null);
+    }
+  };
+
+  // Auto-refresh all store links in current watch
+  const handleRefreshAllCurrentWatchLinks = async () => {
+    if (!currentWatch) return;
+    setIsRefreshingAll(true);
+    let updatedCount = 0;
+    try {
+      for (const link of currentWatch.links) {
+        try {
+          const resolved = await resolveStorePriceFromUrl(link.url);
+          if (resolved && resolved.price > 0 && resolved.price !== link.currentPrice) {
+            await updateStorePriceAndCheckAlert(currentWatch.id, link.id, resolved.price, false);
+            updatedCount++;
+          }
+        } catch (linkErr) {
+          // ignore individual error
+        }
+      }
+      setWatches(getCustomWatches());
+      if (updatedCount > 0) {
+        showFeedback('success', `Сверено! Актуализированы цены для ${updatedCount} магазинов.`);
+      } else {
+        showFeedback('info', `Все цены в ${currentWatch.links.length} магазинах проверены и соответствуют источникам.`);
+      }
+    } finally {
+      setIsRefreshingAll(false);
     }
   };
 
