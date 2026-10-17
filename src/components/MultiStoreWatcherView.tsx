@@ -26,7 +26,8 @@ import {
   Loader2,
   CheckCircle2,
   ShoppingBag,
-  Tag
+  Tag,
+  Activity
 } from 'lucide-react';
 import { CustomProductWatch, StoreLink, MarketplaceId, TelegramConfig } from '../types';
 import { 
@@ -46,12 +47,27 @@ import {
 import { TelegramSettingsModal } from './TelegramSettingsModal';
 import { PWAInstallButton } from './PWAInstallButton';
 import { MARKETPLACE_CONFIGS } from '../data/mockCatalog';
+import { parsingHealthService } from '../services/parsingHealthService';
 
-export const MultiStoreWatcherView: React.FC = () => {
+interface MultiStoreWatcherViewProps {
+  onNavigateToHealth?: () => void;
+}
+
+export const MultiStoreWatcherView: React.FC<MultiStoreWatcherViewProps> = ({
+  onNavigateToHealth
+}) => {
   const [watches, setWatches] = useState<CustomProductWatch[]>(getCustomWatches());
   const [selectedWatchId, setSelectedWatchId] = useState<string>(watches[0]?.id || '');
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(getTelegramConfig());
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [healthSummary, setHealthSummary] = useState(parsingHealthService.getOverallSummary());
+
+  useEffect(() => {
+    const unsub = parsingHealthService.subscribe(() => {
+      setHealthSummary(parsingHealthService.getOverallSummary());
+    });
+    return unsub;
+  }, []);
 
   // Notifications feedback
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
@@ -440,6 +456,27 @@ export const MultiStoreWatcherView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Parsing Quality & Freshness Indicator */}
+      {healthSummary.hasLimitedFreshness && (
+        <div className="p-3.5 rounded-xl mb-6 bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <Activity className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span>
+              <strong>Внимание по актуальности:</strong> На маркетплейсе <strong>Ozon</strong> активен WAF экран капчи. Автоматическое определение цен использует резервный кэш и поиск по каталогу.
+            </span>
+          </div>
+          {onNavigateToHealth && (
+            <button
+              type="button"
+              onClick={onNavigateToHealth}
+              className="text-xs font-semibold text-amber-300 hover:text-white underline shrink-0 cursor-pointer self-start sm:self-auto"
+            >
+              Открыть мониторинг качества парсинга →
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Global Feedback Banner */}
       {actionFeedback && (

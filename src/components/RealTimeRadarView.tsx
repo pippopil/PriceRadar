@@ -23,7 +23,8 @@ import {
   Radio, 
   TrendingDown,
   Check,
-  Info
+  Info,
+  Activity
 } from 'lucide-react';
 import { 
   RadarConfig, 
@@ -39,15 +40,18 @@ import { soundService } from '../services/soundNotificationService';
 import { getTelegramConfig, sendTestTelegramAlert } from '../services/telegramService';
 import { getCustomWatches } from '../services/multiStoreWatcher';
 import { MARKETPLACE_CONFIGS } from '../data/mockCatalog';
+import { parsingHealthService } from '../services/parsingHealthService';
 
 interface RealTimeRadarViewProps {
   onOpenTelegramSettings: () => void;
   onNavigateToWatches: () => void;
+  onNavigateToHealth?: () => void;
 }
 
 export const RealTimeRadarView: React.FC<RealTimeRadarViewProps> = ({
   onOpenTelegramSettings,
-  onNavigateToWatches
+  onNavigateToWatches,
+  onNavigateToHealth
 }) => {
   const [config, setConfig] = useState<RadarConfig>(realtimeMonitor.getConfig());
   const [alerts, setAlerts] = useState<RealtimeAlertEvent[]>(realtimeMonitor.getAlerts());
@@ -60,6 +64,14 @@ export const RealTimeRadarView: React.FC<RealTimeRadarViewProps> = ({
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'alert' } | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyNotice, setVerifyNotice] = useState<{ id: string; text: string; type: 'success' | 'info' | 'warning' } | null>(null);
+  const [healthSummary, setHealthSummary] = useState(parsingHealthService.getOverallSummary());
+
+  useEffect(() => {
+    const unsubHealth = parsingHealthService.subscribe(() => {
+      setHealthSummary(parsingHealthService.getOverallSummary());
+    });
+    return unsubHealth;
+  }, []);
 
   // Subscribe to monitor ticks and incoming alerts
   useEffect(() => {
@@ -701,6 +713,37 @@ export const RealTimeRadarView: React.FC<RealTimeRadarViewProps> = ({
               Цены на маркетплейсах меняются динамически продавцами в зависимости от акций и персональных скидок. Ссылка «Купить» открывает предложения с фильтром минимальной стоимости. Нажмите <b>«Сверить цену»</b> для мгновенного онлайн-запроса актуальной стоимости из магазина прямо сейчас.
             </p>
           </div>
+        </div>
+
+        {/* Индикатор статуса и качества парсинга */}
+        <div className="px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-indigo-400" />
+            <span className="text-slate-300">
+              Статус парсинга:
+            </span>
+            {healthSummary.hasLimitedFreshness ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                Внимание: {healthSummary.degraded + healthSummary.down} магазин(а) в резервном режиме (капча / 404)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Все {healthSummary.total} маркетплейсов в режиме Realtime
+              </span>
+            )}
+          </div>
+
+          {onNavigateToHealth && (
+            <button
+              onClick={onNavigateToHealth}
+              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors cursor-pointer self-start sm:self-auto"
+            >
+              <span>Панель качества парсинга</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {alerts.length === 0 ? (

@@ -212,3 +212,48 @@ export interface RadarConfig {
   notifySound: boolean;
   notifyInApp: boolean;
 }
+
+export type ParsingHealthStatus = 'operational' | 'degraded' | 'down' | 'checking';
+
+export type ParsingErrorCode = 
+  | 'CAPTCHA_BLOCKED' 
+  | 'NOT_FOUND_404' 
+  | 'RATE_LIMIT_429' 
+  | 'SELECTOR_MUTATION' 
+  | 'GATEWAY_TIMEOUT_504' 
+  | 'SESSION_EXPIRED';
+
+export interface ParsingIncident {
+  id: string;
+  timestamp: string;
+  storeId: string;
+  storeName: string;
+  errorCode: ParsingErrorCode;
+  errorTitle: string;
+  httpStatus: number;
+  message: string;
+  affectedUrl: string;
+  impactDescription: string;
+  recommendation: string;
+  resolved: boolean;
+  resolvedAt?: string;
+  severity: 'critical' | 'warning' | 'info';
+}
+
+export interface StoreHealthInfo {
+  storeId: string;
+  storeName: string;
+  domain: string;
+  status: ParsingHealthStatus;
+  statusMessage: string;
+  successRate24h: number;
+  avgLatencyMs: number;
+  lastCheckedAt: string;
+  freshnessState: 'realtime' | 'delayed_cache' | 'limited';
+  freshnessNotice: string;
+  activeIncident: ParsingIncident | null;
+  bypassMethod: string;
+  recentIncidentsCount: number;
+  totalChecks24h: number;
+}
+

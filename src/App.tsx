@@ -10,6 +10,7 @@ import { ArchitectureSecurityView } from './components/ArchitectureSecurityView'
 import { MultiStoreWatcherView } from './components/MultiStoreWatcherView';
 import { RealTimeRadarView } from './components/RealTimeRadarView';
 import { LiveDropAlertBanner } from './components/LiveDropAlertBanner';
+import { ParsingHealthMonitoringPanel } from './components/ParsingHealthMonitoringPanel';
 import { 
   ParsedProduct, 
   TrackedItem, 
@@ -378,7 +379,16 @@ export default function App() {
         )}
 
         {activeTab === 'multi-watch' && (
-          <MultiStoreWatcherView />
+          <MultiStoreWatcherView 
+            onNavigateToHealth={() => setActiveTab('health')}
+          />
+        )}
+
+        {activeTab === 'health' && (
+          <ParsingHealthMonitoringPanel 
+            onNavigateToWatches={() => setActiveTab('multi-watch')}
+            onNavigateToRadar={() => setActiveTab('radar')}
+          />
         )}
 
         {activeTab === 'tracking' && (
@@ -428,6 +438,7 @@ export default function App() {
           <RealTimeRadarView
             onOpenTelegramSettings={() => setActiveTab('telegram')}
             onNavigateToWatches={() => setActiveTab('multi-watch')}
+            onNavigateToHealth={() => setActiveTab('health')}
           />
         )}
 

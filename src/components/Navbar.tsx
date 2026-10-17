@@ -10,14 +10,16 @@ import {
   Bot,
   Zap,
   Flame,
-  Radio
+  Radio,
+  Activity
 } from 'lucide-react';
 import { PlanId } from '../types';
 import { SUBSCRIPTION_PLANS } from '../data/planConfigs';
 import { PWAInstallButton } from './PWAInstallButton';
 import { realtimeMonitor } from '../services/realtimeMonitorService';
+import { parsingHealthService } from '../services/parsingHealthService';
 
-export type ActiveTab = 'search' | 'radar' | 'multi-watch' | 'tracking' | 'vault' | 'telegram' | 'plans' | 'architecture';
+export type ActiveTab = 'search' | 'radar' | 'multi-watch' | 'health' | 'tracking' | 'vault' | 'telegram' | 'plans' | 'architecture';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -39,6 +41,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [secondsRemaining, setSecondsRemaining] = useState(30);
   const [isScanning, setIsScanning] = useState(false);
   const [alertCount, setAlertCount] = useState(realtimeMonitor.getAlerts().length);
+  const [healthSummary, setHealthSummary] = useState(parsingHealthService.getOverallSummary());
+
+  useEffect(() => {
+    const unsubHealth = parsingHealthService.subscribe(() => {
+      setHealthSummary(parsingHealthService.getOverallSummary());
+    });
+    return unsubHealth;
+  }, []);
 
   useEffect(() => {
     const unsubTick = realtimeMonitor.onTick((secs, scanning) => {
@@ -119,6 +129,27 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bot className="w-3.5 h-3.5" />
             <span>Мульти-ссылки</span>
+          </button>
+
+          {/* Parsing Health & Quality Tab */}
+          <button
+            onClick={() => setActiveTab('health')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'health'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : healthSummary.hasLimitedFreshness
+                ? 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+            }`}
+            title="Мониторинг качества парсинга, капчи и 404 ошибок"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Качество парсинга</span>
+            {healthSummary.hasLimitedFreshness ? (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Актуальность части данных ограничена" />
+            ) : (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            )}
           </button>
 
           <button
@@ -218,6 +249,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           className={`px-2.5 py-1 rounded whitespace-nowrap font-semibold ${activeTab === 'multi-watch' ? 'bg-indigo-600 text-white' : 'text-indigo-400'}`}
         >
           Мульти-ссылки
+        </button>
+        <button
+          onClick={() => setActiveTab('health')}
+          className={`px-2.5 py-1 rounded whitespace-nowrap flex items-center gap-1 ${
+            activeTab === 'health' 
+              ? 'bg-indigo-600 text-white' 
+              : healthSummary.hasLimitedFreshness 
+              ? 'text-amber-400 bg-amber-950/30 border border-amber-500/30' 
+              : 'text-slate-400'
+          }`}
+        >
+          <Activity className="w-3 h-3" />
+          <span>Качество</span>
+          {healthSummary.hasLimitedFreshness && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab('search')}
